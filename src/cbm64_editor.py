@@ -31,12 +31,12 @@ import colorama
 colorama.init(strip=False)
 
 # Import BASIC interpreter
-BASIC_PATH = Path(__file__).parent / "cbm_basic.py"
-spec = importlib.util.spec_from_file_location("cbm_basic", str(BASIC_PATH))
-if spec is not None and spec.loader is not None:
-    cbm_basic = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(cbm_basic)
-    BasicInterpreter = cbm_basic.BasicInterpreter
+_BASIC_PATH = Path(__file__).parent / "cbm_basic.py"
+_spec = importlib.util.spec_from_file_location("cbm_basic", str(_BASIC_PATH))
+if _spec is not None and _spec.loader is not None:
+    _cbm_basic = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_cbm_basic)
+    BasicInterpreter = _cbm_basic.BasicInterpreter
 
 
 class BasicLineValidator(Validator):
@@ -126,6 +126,158 @@ COLORS = {
     "reset": "",  # No style
 }
 
+# PETSCII to Unicode glyph mapping for terminal display
+PETSCII_TO_UNICODE = {
+    0: " ",
+    64: "@",
+    65: "A",
+    66: "B",
+    67: "C",
+    68: "D",
+    69: "E",
+    70: "F",
+    71: "G",
+    72: "H",
+    73: "I",
+    74: "J",
+    75: "K",
+    76: "L",
+    77: "M",
+    78: "N",
+    79: "O",
+    80: "P",
+    81: "Q",
+    82: "R",
+    83: "S",
+    84: "T",
+    85: "U",
+    86: "V",
+    87: "W",
+    88: "X",
+    89: "Y",
+    90: "Z",
+    91: "[",
+    92: "\\",
+    93: "]",
+    94: "^",
+    95: "_",
+    96: "←",
+    97: "↓",
+    98: "↑",
+    99: "→",
+    160: " ",
+    161: "!",
+    162: '"',
+    163: "#",
+    164: "$",
+    165: "%",
+    166: "&",
+    167: "'",
+    168: "(",
+    169: ")",
+    170: "*",
+    171: "+",
+    172: ",",
+    173: "-",
+    174: ".",
+    175: "/",
+    176: "▒",
+    177: "▒",
+    178: "█",
+    179: "│",
+    180: "┤",
+    181: "╡",
+    182: "╢",
+    183: "╖",
+    184: "╕",
+    185: "╣",
+    186: "║",
+    187: "╗",
+    188: "╝",
+    189: "╜",
+    190: "╛",
+    191: "┐",
+    192: "└",
+    193: "┴",
+    194: "├",
+    195: "─",
+    196: "┼",
+    197: "┬",
+    198: "┌",
+    199: "│",
+    200: "█",
+    201: "▓",
+    202: "▒",
+    203: "░",
+    204: "▒",
+    205: "╲",
+    206: "╱",
+    207: "╧",
+    208: "╨",
+    209: "╤",
+    210: "╥",
+    211: "╙",
+    212: "╘",
+    213: "╒",
+    214: "═",
+    215: "╪",
+    216: "┘",
+    217: "┌",
+    218: "▚",
+    219: "▞",
+    220: "▀",
+    221: "▐",
+    222: "▌",
+    223: "■",
+    224: "●",
+    225: "▓",
+    226: "▒",
+    227: "π",
+    228: "≤",
+    229: "≥",
+    230: "≠",
+    231: "£",
+    232: "¢",
+    233: "←",
+    234: "├",
+    235: "┤",
+    236: "↓",
+    237: "↑",
+    238: "●",
+    239: "■",
+    240: "□",
+    241: "○",
+    242: "♣",
+    243: "♥",
+    244: "♠",
+    245: "♫",
+    246: "☼",
+    247: "▌",
+    248: "▐",
+    249: "•",
+    250: "◙",
+    251: "♪",
+    252: "☻",
+    253: "√",
+    254: "█",
+    255: "▀",
+}
+
+
+def petscii_to_unicode(chars: str) -> str:
+    """Convert PETSCII character codes to Unicode glyphs."""
+    result = []
+    for char in chars:
+        code = ord(char)
+        if code in PETSCII_TO_UNICODE:
+            result.append(PETSCII_TO_UNICODE[code])
+        elif code < 128:
+            result.append(char)
+        else:
+            result.append(char)
+    return "".join(result)
+
+
 BASIC_KEYWORDS = {
     "?",
     "PRINT",
@@ -202,8 +354,8 @@ def format_basic_line(line_num: int, code: str) -> str:
 
     formatted_parts = []
 
-    for token in tokens:
-        if token == str(line_num):
+    for i, token in enumerate(tokens):
+        if i == 0 and token == str(line_num):
             continue
 
         if token.upper() in BASIC_KEYWORDS:
@@ -230,8 +382,8 @@ def colorize_basic_line(line_num: int, code: str) -> FormattedText:
     result.append((COLORS["lineno"], str(line_num)))
     result.append(("", " "))
 
-    for token in tokens:
-        if token == str(line_num):
+    for i, token in enumerate(tokens):
+        if i == 0 and token == str(line_num):
             continue
 
         token_upper = token.upper()
@@ -265,6 +417,7 @@ class CBM64Editor:
         self.program_running = False
         self.program_interrupted = False
         self.last_executed_line = None
+        self._suppress_cursor_magic = False
 
         # Setup prompt_toolkit session
         self.session = PromptSession()
@@ -337,18 +490,26 @@ class CBM64Editor:
                 "CLS",
             ]:
                 # Move cursor up one line, clear it, and show error
-                sys.stdout.write("\033[F\033[2K")
-                sys.stdout.flush()
-                print_formatted_text(
-                    FormattedText([("ansired", f"?SYNTAX ERROR IN {line_num}")])
-                )
+                if not self._suppress_cursor_magic:
+                    sys.stdout.write("\033[F\033[2K")
+                    sys.stdout.flush()
+                if sys.stdout.isatty():
+                    print_formatted_text(
+                        FormattedText([("ansired", f"?SYNTAX ERROR IN {line_num}")])
+                    )
+                else:
+                    print(f"?SYNTAX ERROR IN {line_num}")
             else:
                 # Store formatted version
                 self.program_lines[line_num] = formatted_code
                 # Move cursor up one line, clear it, and print formatted version
-                sys.stdout.write("\033[F\033[2K")
-                sys.stdout.flush()
-                print_formatted_text(colorize_basic_line(line_num, formatted_code))
+                if not self._suppress_cursor_magic:
+                    sys.stdout.write("\033[F\033[2K")
+                    sys.stdout.flush()
+                if sys.stdout.isatty():
+                    print_formatted_text(colorize_basic_line(line_num, formatted_code))
+                else:
+                    print(f"{line_num} {formatted_code}")
         else:
             # Just a line number - delete line
             line_num = int(parts[0])
@@ -377,6 +538,8 @@ class CBM64Editor:
         elif cmd_upper == "BYE":
             print("GOODBYE!")
             sys.exit(0)
+        elif cmd_upper.startswith("EDIT"):
+            self.handle_edit_command(command)
         else:
             self.execute_immediate(command)
 
@@ -388,7 +551,11 @@ class CBM64Editor:
 
         for line_num in sorted(self.program_lines.keys()):
             code = self.program_lines[line_num]
-            print_formatted_text(colorize_basic_line(line_num, code))
+            if sys.stdout.isatty():
+                print_formatted_text(colorize_basic_line(line_num, code))
+            else:
+                # In non-tty mode, just print the line
+                print(f"{line_num} {code}")
         print()
 
     def run_program(self):
@@ -417,7 +584,7 @@ class CBM64Editor:
         self.program_lines.clear()
 
     def load_program(self):
-        """LOAD command"""
+        """LOAD command - supports .bas (text) and .prg (tokenized) formats"""
         if sys.stdin.isatty():
             filename = self.session.prompt("FILENAME? ").strip()
         else:
@@ -428,23 +595,34 @@ class CBM64Editor:
             filename = "program.bas"
 
         try:
-            with open(filename, "r") as f:
-                self.program_lines.clear()
-                for line in f:
-                    line = line.strip()
-                    if line and line[0].isdigit():
-                        parts = line.split(" ", 1)
-                        if len(parts) >= 2:
-                            line_num = int(parts[0])
-                            code = parts[1].strip()
-                            self.program_lines[line_num] = code
-                print("SEARCHING FOR *")
+            from src.prg_file import is_prg_file, load_prg
+
+            print("SEARCHING FOR *")
+
+            if is_prg_file(filename):
+                # Load tokenized PRG file
+                self.program_lines = load_prg(filename)
+                print("LOADING (PRG)")
+            else:
+                # Load text BAS file
+                with open(filename, "r") as f:
+                    self.program_lines.clear()
+                    for line in f:
+                        line = line.strip()
+                        if line and line[0].isdigit():
+                            parts = line.split(" ", 1)
+                            if len(parts) >= 2:
+                                line_num = int(parts[0])
+                                code = parts[1].strip()
+                                self.program_lines[line_num] = code
                 print("LOADING")
         except FileNotFoundError:
             print("?FILE NOT FOUND")
+        except ValueError as e:
+            print(f"?FILE FORMAT ERROR: {e}")
 
     def save_program(self):
-        """SAVE command"""
+        """SAVE command - supports .bas (text) and .prg (tokenized) formats"""
         if sys.stdin.isatty():
             filename = self.session.prompt("FILENAME? ").strip()
         else:
@@ -455,10 +633,19 @@ class CBM64Editor:
             filename = "program.bas"
 
         try:
-            with open(filename, "w") as f:
-                for line_num in sorted(self.program_lines.keys()):
-                    f.write(f"{line_num} {self.program_lines[line_num]}\n")
-                print("WRITING *")
+            from src.prg_file import is_prg_file, save_prg
+
+            if is_prg_file(filename):
+                # Save as tokenized PRG file
+                save_prg(self.program_lines, filename)
+                print("SAVING (PRG)")
+                print("OK")
+            else:
+                # Save as text BAS file
+                with open(filename, "w") as f:
+                    for line_num in sorted(self.program_lines.keys()):
+                        f.write(f"{line_num} {self.program_lines[line_num]}\n")
+                print("SAVING")
                 print("OK")
         except Exception as e:
             print(f"?{type(e).__name__.upper()} ERROR")
@@ -473,6 +660,8 @@ class CBM64Editor:
 
         try:
             self.interpreter.run_program(temp_program)
+        except SyntaxError:
+            print("?SYNTAX ERROR")
         except Exception:
             print("?SYNTAX ERROR")
 
@@ -485,6 +674,7 @@ class CBM64Editor:
         print("  RUN           - Execute current program")
         print("  NEW           - Clear current program")
         print("  CLR           - Clear all variables")
+        print("  EDIT <n>      - Edit line number n")
         print("  HELP          - Show this help")
         print("  BYE           - Exit BASIC")
         print()
@@ -492,6 +682,74 @@ class CBM64Editor:
         print("  <number> <code>  - Add/change program line")
         print("  <number>         - Delete program line")
         print()
+
+    def handle_edit_command(self, command: str):
+        """Handle EDIT command - edit a specific line number"""
+        parts = command.strip().split()
+        if len(parts) < 2:
+            print("?MISSING LINE NUMBER")
+            return
+
+        try:
+            line_num = int(parts[1])
+        except ValueError:
+            print("?SYNTAX ERROR")
+            return
+
+        if line_num not in self.program_lines:
+            print(f"?LINE NUMBER {line_num} NOT PRESENT")
+            return
+
+        # Get the current line content
+        current_line = self.program_lines[line_num]
+        edit_text = f"{line_num} {current_line}"
+
+        # Prompt for the new line with pre-filled text
+        if sys.stdin.isatty():
+            try:
+                new_line = self.session.prompt(
+                    "",
+                    default=edit_text,
+                    validator=BasicLineValidator(),
+                    validate_while_typing=False,
+                )
+            except ValidationError as ve:
+                print()  # New line
+                error_pos = ve.cursor_position
+                error_line = " " * error_pos + " \033[5m█\033[0m  " + ve.message
+                print(error_line, flush=True)
+                return
+        else:
+            print(f"{edit_text} ", end="", flush=True)
+            new_line = input()
+
+        # Parse the edited line (validate and store)
+        self.parse_command(new_line)
+
+    def handle_multiline_input(self, text: str) -> bool:
+        """Handle multi-line input (e.g., pasted code).
+
+        Returns True if READY should be shown.
+        """
+        # Suppress cursor magic during multi-line paste to avoid escape sequence interference
+        old_suppress = self._suppress_cursor_magic
+        self._suppress_cursor_magic = True
+
+        lines = text.strip().split("\n")
+        show_ready = False
+
+        for line in lines:
+            line = line.strip()
+            if line:
+                result = self.parse_command(line)
+                show_ready = result
+
+        # Restore cursor magic state and reset session
+        self._suppress_cursor_magic = old_suppress
+        self.session = PromptSession()
+
+        # Always show READY after multi-line paste
+        return True
 
     def run(self):
         """Main editor loop"""
@@ -511,13 +769,20 @@ class CBM64Editor:
                             validator=validator,
                             validate_while_typing=False,
                         )
-                        # No validation error, accept the line
-                        show_ready = self.parse_command(command)
+
+                        # Check for multi-line input (pasted code)
+                        # Detection: ends with newline that wasn't typed (paste mode)
+                        if command.endswith("\n") or "\n" in command:
+                            show_ready = self.handle_multiline_input(command)
+                        else:
+                            # No validation error, accept the line
+                            show_ready = self.parse_command(command)
+
                         if show_ready:
                             self.show_prompt()
                     except ValidationError as ve:
                         # Validation error - don't accept the line
-                        # Show error message with flashing glyph at problem position
+                        # Show error message with flashing glyph at cursor position
                         print()  # New line
                         # Create error display with flashing glyph at cursor position
                         error_pos = ve.cursor_position
@@ -528,7 +793,12 @@ class CBM64Editor:
                     # Fall back to regular input for non-interactive
                     command = input("")
 
-                    show_ready = self.parse_command(command)
+                    # Check for multi-line input
+                    if "\n" in command:
+                        show_ready = self.handle_multiline_input(command)
+                    else:
+                        show_ready = self.parse_command(command)
+
                     if show_ready:
                         self.show_prompt()
             except KeyboardInterrupt:

@@ -1,13 +1,19 @@
 [project]
 name = "cbm64basic"
-version = "1.0.0"
+version = "0.1.0"
 description = "Commodore 64 BASIC V2 Editor with Syntax Highlighting"
 readme = "README.md"
 license = {text = "Apache-2.0"}
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "prompt-toolkit>=3.0.0",
     "colorama>=0.4.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pdoc>=14.0.0",
 ]
 
 [project.scripts]
