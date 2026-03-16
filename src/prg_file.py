@@ -17,7 +17,7 @@ Program ends with:
 - 2 bytes: $00 $00 (null pointer = end of program)
 """
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict
 
 
 # C64 BASIC V2 Token table
@@ -127,12 +127,10 @@ def load_prg(filename: str) -> Dict[int, str]:
     if len(data) < 4:
         raise ValueError("PRG file too short")
 
-    # First 2 bytes are load address (little-endian)
-    load_addr = data[0] | (data[1] << 8)
+    # Skip load address (little-endian) - we assume BASIC_START
+    pos = 2  # Start after load address
 
     program_lines = {}
-    pos = 2  # Start after load address
-    current_addr = load_addr
 
     while pos < len(data) - 1:
         # Read pointer to next line (2 bytes, little-endian)
@@ -184,10 +182,8 @@ def load_prg(filename: str) -> Dict[int, str]:
         pos += 1
 
         program_lines[line_num] = "".join(line_text)
-        current_addr = next_line_ptr
 
     return program_lines
-
 
 def save_prg(program_lines: Dict[int, str], filename: str) -> None:
     """Save a BASIC program to PRG format.

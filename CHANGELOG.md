@@ -34,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Dict dispatch for function lookups
   - match/case for command dispatch
 
+### Fixed
+
+- **Code quality improvements**: Removed unused imports and fixed minor bugs:
+  - Removed unused imports (`re`, `os`, `prompt_toolkit.*` etc.) in `cbm64_editor.py`
+  - Removed unused imports and duplicate import in `cbm_basic.py`
+  - Fixed indentation and string literal issues in `prg_file.py`
+  - Removed unused imports in `prg_file.py` (`List`, `Tuple`, `Optional`)
+  - Fixed unused variable (`load_addr`, `current_addr`, `show_ready`) in various files
+
 ### Changed
 
 - **Python version**: Minimum Python 3.10 (for match/case support)

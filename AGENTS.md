@@ -12,7 +12,7 @@ uv venv .venv
 source .venv/bin/activate
 uv pip install -e .
 
-# Using pip
+# Using pip (with virtual environment)
 cd ~/git/gsl/cbm64basic
 python3 -m venv .venv
 source .venv/bin/activate
@@ -30,17 +30,37 @@ python3 -m src.cbm_basic
 
 ### Testing
 ```bash
-# Run all pytest tests (96 tests)
+# Run all pytest tests
 pytest tests/test_basic.py -v
 
-# Run a specific test
+# Run a specific test by function name
 pytest tests/test_basic.py::TestBasicFeatures::test_for_next_loop -v
 
-# Run tests and show output
+# Run a specific test by line number (alternative)
+pytest tests/test_basic.py::test_for_next_loop -v
+
+# Run tests and show output (no capture)
 pytest tests/test_basic.py -s
 
 # Run all .bas test programs
 pytest tests/test_basic.py::TestBasicPrograms -v
+
+# Run tests with coverage
+pytest --cov=src tests/test_basic.py
+
+# Run a single test program file directly
+python3 -m src.cbm_basic tests/test_print.bas
+```
+
+### Development Commands (Makefile)
+```bash
+make install     # Install package in development mode
+make test        # Run all tests
+make docs        # Generate pydoc documentation
+make lint        # Check code style (if ruff installed)
+make run         # Start the BASIC editor
+make clean       # Remove generated files
+make help        # Show available make targets
 ```
 
 ### No requirements.txt
@@ -49,7 +69,6 @@ This project uses modern Python packaging with `pyproject.toml`. Do not create o
 ## Code Style Guidelines
 
 ### Core Principles
-
 1. **PEP 8 Compliant** - Follow Python's official style guide
 2. **Small Files** - Keep each module under 500 lines for easier AI editing and maintenance
 3. **Single Responsibility** - Each module should have one clear purpose
@@ -84,7 +103,7 @@ def process(items: List[str]) -> Dict[str, int]:
 - Classes: `PascalCase` (`BasicInterpreter`, `VirtualScreen`)
 - Functions/Methods: `snake_case` (`tokenize`, `handle_print`)
 - Variables: `snake_case` (`line_num`, `current_token`)
-- Constants: `UPPER_CASE` (`SCREEN_BASE`, `FKEY_SEQUENCES`)
+- Constants: `UPPER_CASE` (`SCREEN_BASE`, `SCREEN_COLS`)
 - Private attributes: `_underscore_prefix` (`_execute_statement`)
 
 ### Imports
@@ -103,7 +122,6 @@ from src.screen import VirtualScreen
 ```
 
 ### Dispatch Patterns
-
 **Prefer dict dispatch over long if/elif chains:**
 ```python
 # Good - dict dispatch
@@ -156,7 +174,6 @@ src/
 ```
 
 ### Module Responsibilities
-
 | Module | Purpose |
 |--------|---------|
 | `constants.py` | Memory addresses, screen dimensions, default colors |
@@ -171,7 +188,6 @@ src/
 | `cbm64_editor.py` | Interactive editor with syntax highlighting |
 
 ### Adding New Features
-
 1. **Identify the right module** based on responsibilities above
 2. **Check file size** - if module is near 500 lines, consider splitting first
 3. **Add to dispatch table** if it's a new function or command
@@ -179,7 +195,6 @@ src/
 5. **Update re-exports** in `cbm_basic.py` if adding public API
 
 ### Example: Adding a New BASIC Function
-
 ```python
 # In src/functions.py
 
@@ -208,7 +223,12 @@ Only add dependencies if absolutely necessary. Current deps:
 - `prompt-toolkit>=3.0.0` - Terminal input handling
 - `colorama>=0.4.6` - Cross-platform ANSI colors
 
+Dev dependencies (optional):
+- `pytest>=7.0.0` - Testing framework
+- `pdoc>=14.0.0` - Documentation generation
+
 ### Testing Requirements
 - All changes must pass existing tests: `pytest tests/test_basic.py -v`
 - New features should include tests
 - Test count should not decrease (currently 96 tests)
+- Test .bas programs should run without errors

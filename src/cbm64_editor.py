@@ -8,10 +8,8 @@ A retro-style editor with improved input handling using prompt_toolkit.
 import sys
 import time
 import importlib.util
-import re
 from pathlib import Path
 from typing import Dict
-import os
 
 try:
     import termios
@@ -20,11 +18,9 @@ except ImportError:
 
 # prompt_toolkit imports
 from prompt_toolkit import PromptSession
-from prompt_toolkit.styles import Style
-from prompt_toolkit.formatted_text import FormattedText, HTML
-from prompt_toolkit import print_formatted_text
-from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.validation import Validator, ValidationError
+from prompt_toolkit import print_formatted_text
+from prompt_toolkit.formatted_text import FormattedText
 import colorama
 
 # Initialize colorama with strip=False to preserve ANSI codes
